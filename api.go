@@ -3,11 +3,15 @@ package main
 import (
 	"encoding/json"
 	"encoding/xml"
+
+	//"encoding/xml"
 	"fmt"
-	"github.com/go-resty/resty"
+	"gopkg.in/resty.v1"
 	"strconv"
 	"strings"
 )
+
+const VERSION = "5.131"
 
 func friendsInfo(userid int, count int) FriendsResponse {
 	resp, err := resty.R().Get(urlFriends(userid, count))
@@ -21,11 +25,11 @@ func friendsInfo(userid int, count int) FriendsResponse {
 }
 
 func urlFriends(userid int, count int) string {
-	return fmt.Sprintf("https://api.vk.com/method/friends.get?fields=bdate,city,sex&access_token=%v&v=V&user_id=%v&count=%v", getToken(), userid, count)
+	return fmt.Sprintf("https://api.vk.com/method/friends.get?fields=bdate,city,sex,id&access_token=%v&v=V&user_id=%v&count=%v&v=%v", getToken(), userid, count, VERSION)
 }
 
 func chartInfo(h Human) Cchartinfo {
-	cityName := getCityName(h.CityId)
+	cityName := h.City.Title
 	if cityName == "" {
 		return Cchartinfo{}
 	}
@@ -33,7 +37,16 @@ func chartInfo(h Human) Cchartinfo {
 	h.Lat = lat
 	h.Lon = lon
 	var chartInfo Cchartinfo
+	if lat == 0 {
+		return chartInfo
+	}
 	resp, _ := resty.R().Get(chartUrl(h))
+	//resp, err := chartReq(h)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	panic(err)
+	//}
+	//fmt.Println(resp)
 	//resp, _ := ioutil.ReadFile("./chartinfo.xml")
 	xml.Unmarshal([]byte(resp.String()), &chartInfo)
 	return chartInfo
@@ -42,7 +55,27 @@ func chartInfo(h Human) Cchartinfo {
 func chartUrl(h Human) string {
 	day, month, year := parseBdate(h.Bdate)
 	return fmt.Sprintf("http://localhost:8080/chartinfo?name=%v&city=%v&lat=%v&lon=%v&year=%v&month=%v&day=%v&time=%v&hsys=P&display=0,1,14,4,23,10,2,3,5,6,9,7,8",
-		h.FirstName + "%20" + h.LastName, h.CityId, h.Lat, h.Lon, year, month, day, "7.5")
+		h.FirstName + "%20" + h.LastName, h.City.ID, h.Lat, h.Lon, year, month, day, "7.5")
+
+	//opt := []string{
+	//	"-edir/home/gg/projects/go/pkg/mod/github.com/!destiny!lab/go-swetest@v0.2.0/resources/",
+	//	"-b11.11.2017",
+	//	"-ut00:00:00",
+	//	"-geopos"+ fmt.Sprintf("%f", h.Lat) + "," + fmt.Sprintf("%f", h.Lon),
+	//	"-hsysP" ,
+	//	//"-a",
+	//	//"-fPLBRS",
+	//	//"-eswe",
+	//	//"-head",
+	//}
+	//s := swetest.New()
+	//res, err := s.Query(opt)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//fmt.Println(res)
+	//
+	//return string(res), nil
 }
 
 func parseBdate(bdate string) (uint64, uint64, uint64) {
@@ -59,9 +92,16 @@ func parseBdate(bdate string) (uint64, uint64, uint64) {
 func geocode(city string) (float64, float64) {
 	//fmt.Println(city)
 	resp, _ := resty.R().Get(urlGeocode(city))
+	//fmt.Println(resp)
 	var respObj GeocodeResponse
 	json.Unmarshal([]byte(resp.String()), &respObj)
-	latLonStr := respObj.Response.GeoObjectCollection.FeatureMember[0].GeoObject.Point.Pos
+	featureMembers := respObj.Response.GeoObjectCollection.FeatureMember
+	var latLonStr string
+	if len(featureMembers) > 1 {
+		latLonStr = featureMembers[0].GeoObject.Point.Pos
+	} else {
+		return 0, 0
+	}
 	if latLonStr == "" {
 		return 0, 0
 	}
@@ -72,5 +112,5 @@ func geocode(city string) (float64, float64) {
 }
 
 func urlGeocode(address string) string {
-	return fmt.Sprintf("https://geocode-maps.yandex.ru/1.x/?geocode=%v&apiKey=37a46563-f5d8-4398-b116-73b788b440f1&format=json", address)
+	return fmt.Sprintf("https://geocode-maps.yandex.ru/1.x?geocode=%v&apikey=37a46563-f5d8-4398-b116-73b788b440f1&format=json", address)
 }

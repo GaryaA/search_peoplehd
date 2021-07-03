@@ -5,12 +5,13 @@ import (
 )
 
 var vktoken string
-const AuthUserId = 2921823
+
+//const AUTH_USER_ID = 650944593
 
 func startUpToken() {
 	dat, err := ioutil.ReadFile("./token")
 	check(err)
-	if dat == nil || string(dat) == ""{
+	if dat == nil || string(dat) == "" {
 		updateTokenRemote()
 	}
 	vktoken = string(dat)
@@ -63,5 +64,3 @@ func authVk() string {
 	panic("df")
 	return ""
 }
-
-

@@ -2,21 +2,25 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-resty/resty"
+	"gopkg.in/resty.v1"
+	"strconv"
 	"strings"
 	"time"
 )
 
 type FriendsResponse struct {
-	Body []Human `json:"response"`
+	Response struct {
+		Count int     `json:"count"`
+		Body  []Human `json:"items"`
+	} `json:"response"`
 }
 
 type Human struct {
-	UserID    int    `json:"user_id"`
+	Id        int    `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Bdate     string `json:"bdate"`
-	CityId    int    `json:"city"`
+	City      City   `json:"city"`
 	Sex       int    `json:"sex"`
 	Lat       float64
 	Lon       float64
@@ -56,8 +60,9 @@ type GeocodeResponse struct {
 	} `json:"response"`
 }
 
-const UserId = 10144987
-const ClientId = 6785534
+const UserId = 149439230
+
+//const ClientId = 6785534
 
 func main() {
 
@@ -68,14 +73,14 @@ func main() {
 
 func goscan(userid int, username string, stop bool, count int) {
 	friends := friendsInfo(userid, count)
-	for _, v := range friends.Body {
-		if v.CityId == 0 || strings.Count(v.Bdate, ".") < 2 || v.Sex == 2 {
+	for _, v := range friends.Response.Body {
+		if v.City.ID == 0 || strings.Count(v.Bdate, ".") < 2 || v.Sex == 2 {
 			continue
 		}
 		ci := chartInfo(v)
 
 		if check1(ci) {
-			fmt.Println(username + "                                          " + v.FirstName + " " + v.LastName + "                 " + v.Bdate)
+			fmt.Println(username + "    " + strconv.Itoa(v.Id) + "                                          " + v.FirstName + " " + v.LastName + "                 " + v.Bdate)
 			//fmt.Println(ci)
 			fmt.Println("------------------------------------------------------------------------------------------------")
 		} else {
@@ -83,7 +88,7 @@ func goscan(userid int, username string, stop bool, count int) {
 		}
 		time.Sleep(20 * time.Millisecond)
 		if !stop {
-			goscan(v.UserID, v.FirstName+" "+v.LastName, true, 100)
+			goscan(v.Id, v.FirstName+" "+v.LastName, true, 100)
 		}
 	}
 }
@@ -98,15 +103,15 @@ func check1(c Cchartinfo) bool {
 	if c == (Cchartinfo{}) || c.Caspects == nil {
 		return false
 	}
-	//for _, v := range c.Caspects.CConjunction {
-	//	if (v.Attrbody1 == "Mercury" && v.Attrbody2 == "Mars") || (v.Attrbody2 == "Mercury" && v.Attrbody1 == "Mars") {
-	//		return true
-	//	}
-	//}
-	//if c.Cbodies.CSun.Attrsign_name == "Leo" && c.Cbodies.CMars.Attrsign_name == "Cancer" {
-	if c.Cbodies.CVenus.Attrsign_name == "Virgo" {
-		return true
+	for _, v := range c.Caspects.CConjunction {
+		if (v.Attrbody1 == "Pluto" && v.Attrbody2 == "Venus") || (v.Attrbody2 == "Pluto" && v.Attrbody1 == "Venus") {
+			return true
+		}
 	}
+	//if c.Cbodies.CSun.Attrsign_name == "Leo" && c.Cbodies.CMars.Attrsign_name == "Cancer" {
+	//if c.Cbodies.CVenus.Attrsign_name == "Virgo" {
+	//	return true
+	//}
 	return false
 }
 
